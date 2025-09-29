@@ -1,9 +1,10 @@
-#include <cstdio>
-#include <windows.h>
 #include <stdint.h>
-#include <Xinput.h>
-#include <dsound.h>
-#include <math.h>
+
+#define internal        static 
+#define local_persist   static 
+#define global_variable static
+
+#define Pi32            3.14159265359f
 
 typedef int8_t   int8;
 typedef int16_t  int16;
@@ -20,10 +21,12 @@ typedef int32    bool32;
 typedef float    real32;
 typedef double   real64;
 
-#define Pi32            3.14159265359f
-#define internal        static 
-#define local_persist   static 
-#define global_variable static
+#include "handmade.cpp"
+
+#include <windows.h>
+#include <Xinput.h>
+#include <dsound.h>
+#include <math.h>
 
 struct win32_offscreen_buffer
 {
@@ -70,7 +73,7 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
 internal void
-Win32LoadXInput(void)
+Win32LoadXInput()
 {
     HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
     if (XInputLibrary)
@@ -160,35 +163,6 @@ GetWindowDimension(HWND Window)
     return Result;
 }
 
-internal void
-RenderWeirdGradient(win32_offscreen_buffer *Buffer, int XOffset, int YOffset)
-{
-    uint8 *Row = (uint8 *)Buffer->Memory;
-
-    for (int Y = 0; Y < Buffer->Height; ++Y) 
-    {
-        uint32 *Pixel = (uint32 *)Row;
-
-        for (int X = 0; X < Buffer->Width; ++X) 
-        {
-            // Pixel in Memory: RR GG BB XX
-            // When we put into memory we get: 0xXXBBGGRR !
-            // Little Endian Architecture!
-            // Microsoft people looking at that didn't like it!
-            // They wanted to see the memory with the RGB in the proper place
-            // So they defined it backwards in the Memory of the machine
-            // ACTUAL Pixel in Memory: BB GG RR XX
-            // So all windows bitmaps have Blue First, Green then Red Bytes!
-
-            uint8 Blue  = (X + XOffset);
-            uint8 Green = (Y + YOffset);
-
-            *Pixel++ = ((Green << 8) | Blue);
-        }
-
-        Row += Buffer->Pitch;
-    }
-}
 
 internal void
 Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
@@ -512,7 +486,7 @@ WinMain(HINSTANCE Instance,
                         int16 StickY = Pad->sThumbLY;
 
                         XOffset += StickX / 4096;
-                        YOffset -= StickY / 409;
+                        YOffset -= StickY / 4096;
 
                         SoundOutput.ToneHz = 512 + (int)(256.0f * ((real32)StickY / 30000.0f));
                         SoundOutput.WavePeriod = SoundOutput.SamplesPerSecond / SoundOutput.ToneHz;
@@ -523,7 +497,12 @@ WinMain(HINSTANCE Instance,
                     }
                 }
 
-                RenderWeirdGradient(&GlobalBackbuffer, XOffset, YOffset);
+                game_offscreen_buffer Buffer = {};
+                Buffer.Memory = GlobalBackbuffer.Memory;
+                Buffer.Width  = GlobalBackbuffer.Width;
+                Buffer.Height = GlobalBackbuffer.Height;
+                Buffer.Pitch  = GlobalBackbuffer.Pitch;
+                GameUpdateAndRender(&Buffer, XOffset, YOffset);
 
                 DWORD PlayCursor;
                 DWORD WriteCursor;
@@ -559,10 +538,11 @@ WinMain(HINSTANCE Instance,
                 real32 FPS = (real32)PerfCountFrequency / (real32)CounterElapsed;
                 real32 MCPF = ((real32)CyclesElapsed / (1000 * 1000));
 
+#if 0
                 char Buffer[256];
                 sprintf(Buffer, "%.02fms/g | %.02ff/s | %.02fmc/f\n", MSPerFrame, FPS, MCPF);
                 OutputDebugStringA(Buffer);
-
+#endif
                 LastCounter = EndCounter;
                 LastCycleCount = EndCycleCount;
                 }
