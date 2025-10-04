@@ -4,23 +4,6 @@
 #include <math.h>
 
 
-/*
- * NOTE:
- * HANDMADE_SLOW:
- * 0 - No slow code allowed
- * 1 - Slow code allowed
- * HANDMADE_INTERNAL:
- * 0 - Build for public release
- * 1 - Developer build
- */
-
-
-#if HANDMADE_SLOW
-#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
-#else
-#define Assert(Expression)
-#endif
-
 internal void
 GameOutputSound(game_sound_output_buffer *SoundBuffer, int ToneHz)
 {
@@ -84,6 +67,14 @@ GameUpdateAndRender(game_memory *Memory,
 
     if (!Memory->IsInitialized)
     {
+        char *Filename = __FILE__;
+        debug_read_file_result File = DEBUGPlatformReadEntireFile(Filename);
+        if (File.Contents)
+        {
+            DEBUGPlatformWriteEntireFile("test.out", File.ContentsSize, File.Contents);
+            DEBUGPlatformFreeFileMemory(File.Contents);
+        }
+
         GameState->ToneHz = 256;
 
         Memory->IsInitialized = true;

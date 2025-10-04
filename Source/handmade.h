@@ -1,7 +1,49 @@
 #pragma once
 #include "definitions.h"
 
+/*
+ * NOTE:
+ * HANDMADE_SLOW:
+ * 0 - No slow code allowed
+ * 1 - Slow code allowed
+ * HANDMADE_INTERNAL:
+ * 0 - Build for public release
+ * 1 - Developer build
+ */
+
+
+#if HANDMADE_SLOW
+#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
+#else
+#define Assert(Expression)
+#endif
+
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
+// NOTE: Services that the Platform layer provides to the game:
+#if HANDMADE_INTERNAL
+struct debug_read_file_result
+{
+    uint32 ContentsSize;
+    void *Contents;
+};
+
+internal debug_read_file_result DEBUGPlatformReadEntireFile(char *Filename);
+internal void DEBUGPlatformFreeFileMemory(void *BitmapMemory);
+internal bool32 *DEBUGPlatformWriteEntireFile(char *Filename, uint32 MemorySize, void *Memory);
+#endif
+
+inline uint32
+SafeTruncateUInt64(uint64 Value)
+{
+    // We're checking if the value (Current use is for Filesize) is equal or less than an uint32
+    // This is because we could be reading a file bigger than 4gb
+    // But we want an arbitrary boundary of 4gb filesize, we crash if not.
+
+    Assert(Value <= 0xFFFFFFFF);
+    uint32 Result = (uint32)Value;
+    return(Result);
+}
 
 struct game_offscreen_buffer
 {

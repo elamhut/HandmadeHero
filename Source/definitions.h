@@ -7,10 +7,10 @@
 #define global_variable static
 
 #define Pi32            3.14159265359f
-#define Kilobytes(Value) ((Value) * 1024)
-#define Megabytes(Value) (Kilobytes(Value) * 1024)
-#define Gigabytes(Value) (Megabytes(Value) * 1024)
-#define Terabytes(Value) (Gigabytes(Value) * 1024)
+#define Kilobytes(Value) ((Value) * 1024LL)
+#define Megabytes(Value) (Kilobytes(Value) * 1024LL)
+#define Gigabytes(Value) (Megabytes(Value) * 1024LL)
+#define Terabytes(Value) (Gigabytes(Value) * 1024LL)
 
 typedef int8_t   int8;
 typedef int16_t  int16;
