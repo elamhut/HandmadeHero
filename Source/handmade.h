@@ -1,5 +1,6 @@
 #pragma once
 #include "definitions.h"
+#include "handmade.h"
 
 /*
  * NOTE:
@@ -70,40 +71,52 @@ struct game_button_state
 
 struct game_controller_input
 {
+    bool32 IsConnected;
     bool32 IsAnalog;
-
-    real32 StartX;
-    real32 StartY;
-
-    real32 MinX;
-    real32 MinY;
-
-    real32 MaxX;
-    real32 MaxY;
-
-    real32 EndX;
-    real32 EndY;
+    real32 StickAverageX;
+    real32 StickAverageY;
 
     union
     {
-        game_button_state Button[6];
+        game_button_state Buttons[12];
         struct
         {
-            game_button_state Up;
-            game_button_state Down;
-            game_button_state Left;
-            game_button_state Right;
+            game_button_state MoveUp;
+            game_button_state MoveDown;
+            game_button_state MoveLeft;
+            game_button_state MoveRight;
+
+            game_button_state ActionUp;
+            game_button_state ActionDown;
+            game_button_state ActionLeft;
+            game_button_state ActionRight;
+
             game_button_state LeftShoulder;
             game_button_state RightShoulder;
+
+            game_button_state Start;
+            game_button_state Back;
+
+
+            // WARN: All buttons must be added above this line
+            // for the assertion to work
+            game_button_state Terminator;
         };
     };
 };
 
 struct game_input
 {
-    game_controller_input Controllers[4];
+    game_controller_input Controllers[5];
 };
-
+inline game_controller_input *GetController(game_input *Input, int unsigned ControllerIndex)
+{
+    // We're doing Bounds Checking manually here, make sure we're inside the array
+    // This is like a getter but outside of a class
+    Assert(ControllerIndex < ArrayCount(Input->Controllers));
+    game_controller_input *Result = &Input->Controllers[ControllerIndex];
+    return Result;
+}
 
 struct game_memory
 {
