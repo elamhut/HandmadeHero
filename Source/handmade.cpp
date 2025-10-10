@@ -50,6 +50,9 @@ RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffs
             *Pixel++ = ((Green << 8) | Blue);
         }
 
+        // NOTE: What we're doing here is putting the Row Pointer at the beggining
+        // of the next Row of Pixels by incrementing it by the quantity of Bytes
+        // contained in the Width of the screen (Pitch is Width * BytesPerPixel)
         Row += Buffer->Pitch;
     }
 }

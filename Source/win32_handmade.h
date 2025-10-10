@@ -8,7 +8,14 @@ struct win32_offscreen_buffer
     void *Memory;
     int Width;
     int Height;
-    int Pitch;
+    int Pitch; // This is the quantity of Bytes contained in the Width of the screen (Width * BytesPerPixel).
+    int BytesPerPixel;
+};
+
+struct win32_window_dimension
+{
+    int Width;
+    int Height;
 };
 
 struct win32_sound_output
@@ -16,9 +23,13 @@ struct win32_sound_output
     int SamplesPerSecond;
     uint32 RunningSampleIndex;
     int BytesPerSample;
-    int SecondaryBufferSize;
+    DWORD SecondaryBufferSize;
     real32 tSine;
     int LatencySampleCount;
 };
 
-
+struct win32_debug_time_marker
+{
+    DWORD PlayCursor;
+    DWORD WriteCursor;
+};

@@ -40,6 +40,7 @@ SafeTruncateUInt64(uint64 Value)
     // We're checking if the value (Current use is for Filesize) is equal or less than an uint32
     // This is because we could be reading a file bigger than 4gb
     // But we want an arbitrary boundary of 4gb filesize, we crash if not.
+    // This is because Casey is insisting on supporting 32 bits, which is stupid in 2025
 
     Assert(Value <= 0xFFFFFFFF);
     uint32 Result = (uint32)Value;
@@ -127,12 +128,6 @@ struct game_memory
 
     uint64 TransientStorageSize;
     void *TransientStorage; //NOTE: REQUIRED to be cleared to zero at startup
-};
-
-struct win32_window_dimension
-{
-    int Width;
-    int Height;
 };
 
 internal void GameUpdateAndRender(game_input *Input, game_offscreen_buffer *Buffer,
