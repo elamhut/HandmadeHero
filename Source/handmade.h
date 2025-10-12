@@ -55,6 +55,7 @@ struct game_offscreen_buffer
     int Width;
     int Height;
     int Pitch;
+    int BytesPerPixel;
 };
 
 struct game_sound_output_buffer
@@ -130,12 +131,14 @@ struct game_memory
     void *TransientStorage; //NOTE: REQUIRED to be cleared to zero at startup
 };
 
-internal void GameUpdateAndRender(game_input *Input, game_offscreen_buffer *Buffer,
-                                  game_sound_output_buffer *SoundBuffer);
-
 struct game_state
 {
     int ToneHz;
     int GreenOffset;
     int BlueOffset;
 };
+
+internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_offscreen_buffer *Buffer);
+
+internal void GameGetSoundSample(game_memory *Memory, game_sound_output_buffer *SoundBuffer);
+

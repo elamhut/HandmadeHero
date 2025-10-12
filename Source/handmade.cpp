@@ -20,6 +20,10 @@ GameOutputSound(game_sound_output_buffer *SoundBuffer, int ToneHz)
         *SampleOut++ = SampleValue;
 
         tSine += 2.0f * Pi32 * 1.0f / (real32)WavePeriod;
+        if (tSine > 2.0f * Pi32)
+        {
+            tSine -= 2.0f * Pi32;
+        }
     }
 }
 
@@ -60,12 +64,10 @@ RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffs
 
 
 internal void
-GameUpdateAndRender(game_memory *Memory,
-                    game_input *Input, game_offscreen_buffer *Buffer, 
-                    game_sound_output_buffer *SoundBuffer)
+GameUpdateAndRender(game_memory *Memory, game_input *Input, game_offscreen_buffer *Buffer)
 {
-    //NOTE: Assertion to make sure game_button_state array is the same size
-    //as the amount of buttons we've added to the struct
+    // NOTE: Assertion to make sure game_button_state array is the same size
+    // as the amount of buttons we've added to the struct
     Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
             (ArrayCount(Input->Controllers[0].Buttons))) 
     //NOTE: Assertion to make sure our game state isn't bigger than our available memory
@@ -114,7 +116,13 @@ GameUpdateAndRender(game_memory *Memory,
         }
     }
 
-    GameOutputSound(SoundBuffer, GameState->ToneHz);
     RenderWeirdGradient(Buffer, GameState->BlueOffset, GameState->GreenOffset);
     return;
+}
+
+internal void
+GameGetSoundSample(game_memory *Memory, game_sound_output_buffer *SoundBuffer)
+{
+    game_state *GameState = (game_state *)Memory->PermanentStorage;
+    GameOutputSound(SoundBuffer, GameState->ToneHz);
 }
