@@ -1,14 +1,10 @@
-// TODO: Casey will do own Sine function
-#include <cstdio>
-#include <math.h>
-#include <stdint.h>
-
 #include "definitions.h"
-
 #include "handmade.h"
-#include "handmade.cpp"
 
+#include <exception>
 #include <windows.h>
+#include <stdio.h>
+#include <malloc.h>
 #include <Xinput.h>
 #include <dsound.h>
 
@@ -43,9 +39,15 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
+DEBUG_PLATFORM_FREE_FILE_MEMORY(DEBUGPlatformFreeFileMemory)
+{
+    if (Memory)
+    {
+        VirtualFree(Memory, 0, MEM_RELEASE);
+    }
+}
 
-internal debug_read_file_result
-DEBUGPlatformReadEntireFile(char *Filename)
+DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
 {
     debug_read_file_result Result = {};
 
@@ -78,17 +80,8 @@ DEBUGPlatformReadEntireFile(char *Filename)
     return Result;
 }
 
-internal void 
-DEBUGPlatformFreeFileMemory(void *Memory)
-{
-    if (Memory)
-    {
-        VirtualFree(Memory, 0, MEM_RELEASE);
-    }
-}
 
-internal bool32 
-*DEBUGPlatformWriteEntireFile(char *Filename, uint32 MemorySize, void *Memory)
+DEBUG_PLATFORM_WRITE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
 {
     bool32 Result = false;
 
@@ -109,6 +102,56 @@ internal bool32
 
     return 0;
 }
+
+struct win32_game_code
+{
+    HMODULE GameCodeDLL;
+    game_update_and_render *UpdateAndRender;
+    game_get_sound_samples *GetSoundSamples;
+
+    bool32 IsValid;
+};
+
+internal win32_game_code
+Win32LoadGameCode(void)
+{
+    win32_game_code Result = {};
+
+    CopyFile("handmade.dll", "handmade_temp.dll", FALSE);
+    Result.UpdateAndRender = GameUpdateAndRenderStub;
+    Result.GetSoundSamples = GameGetSoundSamplesStub;
+
+    Result.GameCodeDLL = LoadLibraryA("handmade_temp.dll");
+    if (Result.GameCodeDLL)
+    {
+        Result.UpdateAndRender = (game_update_and_render *)GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
+        Result.GetSoundSamples = (game_get_sound_samples *)GetProcAddress(Result.GameCodeDLL, "GameGetSoundSamples");
+
+        Result.IsValid = (Result.UpdateAndRender && Result.GetSoundSamples);
+    } 
+
+    if (!Result.IsValid)
+    {
+        Result.UpdateAndRender = GameUpdateAndRenderStub;
+        Result.GetSoundSamples = GameGetSoundSamplesStub;
+    }
+
+    return Result;
+}
+
+internal void
+Win32UnloadGameCode(win32_game_code *GameCode)
+{
+    if (GameCode->GameCodeDLL)
+    {
+        FreeLibrary(GameCode->GameCodeDLL);
+        GameCode->GameCodeDLL = 0;
+    }
+    GameCode->IsValid = false;
+    GameCode->UpdateAndRender = GameUpdateAndRenderStub;
+    GameCode->GetSoundSamples = GameGetSoundSamplesStub;
+}
+
 
 internal void
 Win32LoadXInput()
@@ -650,6 +693,9 @@ WinMain(HINSTANCE Instance,
         LPSTR     CommandLine,
         int       ShowCode)
 {
+    // win32_game_code Game = Win32LoadGameCode();
+    // Win32UnloadGameCode(&Game);
+
     LARGE_INTEGER PerfCountFrequencyResult;
     QueryPerformanceFrequency(&PerfCountFrequencyResult);
     GlobalPerfCountFrequency = PerfCountFrequencyResult.QuadPart;
@@ -744,6 +790,10 @@ WinMain(HINSTANCE Instance,
             game_memory GameMemory = {};
             GameMemory.PermanentStorageSize = Megabytes(64);
             GameMemory.TransientStorageSize = Gigabytes(4);
+            GameMemory.DEBUGPlatformFreeFileMemory  = DEBUGPlatformFreeFileMemory;
+            GameMemory.DEBUGPlatformReadEntireFile  = DEBUGPlatformReadEntireFile;
+            GameMemory.DEBUGPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
+
 
             // We'll allocate only 1 Memory Address then 
             // move the pointer of the transient storage
@@ -778,6 +828,7 @@ WinMain(HINSTANCE Instance,
                 // NOTE: Here's where the Game Loop begins
                 while (GlobalRunning) 
                 {
+                    win32_game_code Game = Win32LoadGameCode();
 
                     // We initialize a new controller with 0 values than we iterate and copy
                     // the values of the old to the new, keeping pressed button states in the process
@@ -916,7 +967,7 @@ WinMain(HINSTANCE Instance,
                         Buffer.Height = GlobalBackbuffer.Height;
                         Buffer.Pitch  = GlobalBackbuffer.Pitch;
 
-                        GameUpdateAndRender(&GameMemory, NewInput, &Buffer);
+                        Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
 
                         LARGE_INTEGER AudioWallClock = Win32GetWallClock();
                         real32 FromBeginToAudioSeconds = Win32GetSecondsElapsed(FlipWallClock, AudioWallClock);
@@ -1009,7 +1060,7 @@ WinMain(HINSTANCE Instance,
                             SoundBuffer.SamplesPerSecond = SoundOutput.SamplesPerSecond;
                             SoundBuffer.SampleCount = BytesToWrite / SoundOutput.BytesPerSample;
                             SoundBuffer.Samples = Samples;
-                            GameGetSoundSample(&GameMemory, &SoundBuffer);
+                            Game.GetSoundSamples(&GameMemory, &SoundBuffer);
 
 #if HANDMADE_INTERNAL
                             win32_debug_time_marker *Marker = &DebugTimeMarkers[DebugTimeMarkerIndex];
@@ -1147,6 +1198,8 @@ WinMain(HINSTANCE Instance,
                         }
 #endif
                     }
+
+                    Win32UnloadGameCode(&Game);
                 }
             }
         }
