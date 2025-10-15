@@ -1,5 +1,6 @@
 #pragma once
 #include "definitions.h"
+#include "handmade.h"
 
 struct win32_offscreen_buffer
 {
@@ -50,4 +51,16 @@ struct win32_game_code
     game_get_sound_samples *GetSoundSamples;
 
     bool32 IsValid;
+};
+
+struct win32_state
+{
+    uint64 TotalSize;
+    void *GameMemoryBlock;
+
+    HANDLE RecordingHandle;
+    int InputRecordingIndex;
+
+    HANDLE PlaybackHandle;
+    int InputPlayingIndex;
 };

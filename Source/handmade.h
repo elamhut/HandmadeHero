@@ -148,6 +148,10 @@ struct game_state
     int BlueOffset;
 
     real32 tSine;
+
+    int PlayerX;
+    int PlayerY;
+    real32 tJump;
 };
 
 #define GAME_UPDATE_AND_RENDER(name) void name(game_memory *Memory, game_input *Input, game_offscreen_buffer *Buffer)
