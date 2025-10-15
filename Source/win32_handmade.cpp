@@ -1,6 +1,7 @@
 #include "definitions.h"
 #include "handmade.h"
 
+#include <cstddef>
 #include <exception>
 #include <windows.h>
 #include <stdio.h>
@@ -103,29 +104,40 @@ DEBUG_PLATFORM_WRITE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
     return 0;
 }
 
-struct win32_game_code
+inline FILETIME
+Win32GetLastWriteTime(char *Filename)
 {
-    HMODULE GameCodeDLL;
-    game_update_and_render *UpdateAndRender;
-    game_get_sound_samples *GetSoundSamples;
+    FILETIME LastWriteTime = {};
 
-    bool32 IsValid;
-};
+    WIN32_FIND_DATA FindData;
+    HANDLE FindHandle = FindFirstFileA(Filename, &FindData);
+    if (FindHandle != INVALID_HANDLE_VALUE)
+    {
+        LastWriteTime = FindData.ftLastWriteTime;
+        FindClose(FindHandle);
+    }
+
+    return LastWriteTime;
+}
 
 internal win32_game_code
-Win32LoadGameCode(void)
+Win32LoadGameCode(char *SourceDLLName, char *TempDLLName)
 {
     win32_game_code Result = {};
 
-    CopyFile("handmade.dll", "handmade_temp.dll", FALSE);
+    Result.DLLLastWriteTime = Win32GetLastWriteTime(TempDLLName);
+
+    CopyFile(SourceDLLName, TempDLLName, FALSE);
     Result.UpdateAndRender = GameUpdateAndRenderStub;
     Result.GetSoundSamples = GameGetSoundSamplesStub;
 
     Result.GameCodeDLL = LoadLibraryA("handmade_temp.dll");
     if (Result.GameCodeDLL)
     {
-        Result.UpdateAndRender = (game_update_and_render *)GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
-        Result.GetSoundSamples = (game_get_sound_samples *)GetProcAddress(Result.GameCodeDLL, "GameGetSoundSamples");
+        Result.UpdateAndRender =
+            (game_update_and_render *)GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
+        Result.GetSoundSamples = 
+            (game_get_sound_samples *)GetProcAddress(Result.GameCodeDLL, "GameGetSoundSamples");
 
         Result.IsValid = (Result.UpdateAndRender && Result.GetSoundSamples);
     } 
@@ -687,14 +699,50 @@ Win32DebugSyncDisplay(win32_offscreen_buffer *Backbuffer,
     }
 }
 
+internal void
+CatStrings(size_t SourceACount, char *SourceA,
+           size_t SourceBCount, char *SourceB,
+           size_t DestCount, char *Dest)
+{
+    for (int Index = 0; Index < SourceACount; Index++) {
+        *Dest++ = *SourceA++;
+    }
+
+    for (int Index = 0; Index < SourceBCount; Index++) {
+        *Dest++ = *SourceB++;
+    }
+
+    *Dest++ = 0;
+}
+
 int CALLBACK 
 WinMain(HINSTANCE Instance,
         HINSTANCE PrevInstance,
         LPSTR     CommandLine,
         int       ShowCode)
 {
-    // win32_game_code Game = Win32LoadGameCode();
-    // Win32UnloadGameCode(&Game);
+    // NOTE: Don't use MAX_PATH in code that is user-facing, it can be dangerous
+    char EXEFilename[MAX_PATH];
+    DWORD SizeOfFilename = GetModuleFileNameA(0, EXEFilename, sizeof(EXEFilename));
+    char *OnePastLastSlash = EXEFilename;
+    for (char *Scan = EXEFilename; *Scan; Scan++)
+    {
+        if (*Scan == '\\')
+            OnePastLastSlash = Scan + 1;
+    }
+
+    char SourceGameCodeDLLFilename[] = "handmade.dll";
+    char SourceGameCodeDLLFullPath[MAX_PATH];
+    CatStrings(OnePastLastSlash - EXEFilename, EXEFilename,
+               sizeof(SourceGameCodeDLLFilename) - 1, SourceGameCodeDLLFilename,
+               sizeof(SourceGameCodeDLLFullPath) - 1, SourceGameCodeDLLFullPath);
+
+    char TempGameCodeDLLFilename[] = "handmade_temp.dll";
+    char TempGameCodeDLLFullPath[MAX_PATH];
+    CatStrings(OnePastLastSlash - EXEFilename, EXEFilename,
+               sizeof(TempGameCodeDLLFilename), TempGameCodeDLLFilename,
+               sizeof(TempGameCodeDLLFullPath), TempGameCodeDLLFullPath);
+
 
     LARGE_INTEGER PerfCountFrequencyResult;
     QueryPerformanceFrequency(&PerfCountFrequencyResult);
@@ -822,16 +870,23 @@ WinMain(HINSTANCE Instance,
                 real32 AudioLatencySeconds = 0;
                 bool32 SoundIsValid = false;
 
+                win32_game_code Game = Win32LoadGameCode(SourceGameCodeDLLFullPath, TempGameCodeDLLFullPath);
+
                 // rdtsc is for timing code for profiling this behaves differently according to the CPU
                 uint64 LastCycleCount = __rdtsc(); 
 
                 // NOTE: Here's where the Game Loop begins
                 while (GlobalRunning) 
                 {
-                    win32_game_code Game = Win32LoadGameCode();
+                    FILETIME NewDLLWriteTime = Win32GetLastWriteTime(SourceGameCodeDLLFullPath);
+                    if (CompareFileTime(&NewDLLWriteTime, &Game.DLLLastWriteTime) != 0)
+                    {
+                        Win32UnloadGameCode(&Game);
+                        Game = Win32LoadGameCode(SourceGameCodeDLLFullPath, TempGameCodeDLLFullPath);
+                    }
 
                     // We initialize a new controller with 0 values than we iterate and copy
-                    // the values of the old to the new, keeping pressed button states in the process
+                    // the values of the sld to the new, keeping pressed button states in the process
                     game_controller_input *OldKeyboardController = GetController(OldInput, 0);
                     game_controller_input *NewKeyboardController = GetController(NewInput, 0);
                     *NewKeyboardController = {};
@@ -1198,8 +1253,6 @@ WinMain(HINSTANCE Instance,
                         }
 #endif
                     }
-
-                    Win32UnloadGameCode(&Game);
                 }
             }
         }

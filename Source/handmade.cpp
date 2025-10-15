@@ -60,8 +60,6 @@ RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffs
     }
 }
 
-
-
 extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
     // NOTE: Assertion to make sure game_button_state array is the same size
@@ -124,12 +122,3 @@ extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
     game_state *GameState = (game_state *)Memory->PermanentStorage;
     GameOutputSound(GameState, SoundBuffer);
 }
-
-#if HANDMADE_WIN32
-#include "windows.h"
-
-BOOL WINAPI DllMain(hinstDLL, fdwReason, lpvReserved)
-{
-    return TRUE;
-}
-#endif
