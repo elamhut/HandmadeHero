@@ -13,7 +13,7 @@ GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer)
     int16 *SampleOut = SoundBuffer->Samples;
     for (int SampleIndex = 0; SampleIndex < SoundBuffer->SampleCount; ++SampleIndex)
     {
-#if 0
+#if 1
         real32 SineValue = sinf(GameState->tSine);
         int16 SampleValue = (int16)(SineValue * ToneVolume);
 #else
@@ -54,7 +54,7 @@ RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffs
             uint8 Blue  = (uint8)(X + BlueOffset);
             uint8 Green = (uint8)(Y + GreenOffset);
 
-            *Pixel++ = ((Green << 8) | Blue);
+            *Pixel++ = ((Green << 8) | (Blue << 16));
         }
 
         // NOTE: What we're doing here is putting the Row Pointer at the beggining
@@ -67,9 +67,7 @@ RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffs
 internal void
 RenderPlayer(game_offscreen_buffer *Buffer, int PlayerX, int PlayerY)
 {
-    uint8 *EndOfBuffer = (uint8 *)Buffer->Memory +
-                          Buffer->BytesPerPixel*Buffer->Width +
-                          Buffer->Pitch * Buffer->Height;
+    uint8 *EndOfBuffer = (uint8 *)Buffer->Memory + Buffer->Pitch * Buffer->Height;
 
     uint32 Color = 0xFFFFFFFF;
     int Top = PlayerY;
@@ -77,20 +75,18 @@ RenderPlayer(game_offscreen_buffer *Buffer, int PlayerX, int PlayerY)
 
     for (int X = PlayerX; X < PlayerX + 10; ++X) 
     {
-        if ((X >= 0) && (X < Buffer->Width))
-        {
-            uint8 *Pixel = ((uint8 *)Buffer->Memory + 
-                            X * Buffer->BytesPerPixel +
-                            Top * Buffer->Pitch);
+        uint8 *Pixel = ((uint8 *)Buffer->Memory + 
+                X * Buffer->BytesPerPixel +
+                Top * Buffer->Pitch);
 
-            for (int Y = Top; Y < Bottom; ++Y)
+        for (int Y = Top; Y < Bottom; ++Y)
+        {
+            if ((Pixel >= Buffer->Memory) && ((Pixel + 4) <= EndOfBuffer))
             {
-                if ((Pixel >= Buffer->Memory) && (Pixel < EndOfBuffer))
-                {
-                    *(uint32 *)Pixel = Color;
-                    Pixel += Buffer->Pitch;
-                }
+                *(uint32 *)Pixel = Color;
             }
+
+            Pixel += Buffer->Pitch;
         }
     }
 }
