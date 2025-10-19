@@ -40,11 +40,19 @@ RoundReal32ToInt32(real32 Real32ToRound)
 	return Result;
 }
 
+internal int32
+RoundReal32ToUInt32(real32 Real32ToRound)
+{
+	uint32 Result = (uint32)(Real32ToRound + 0.5f);
+
+	return Result;
+}
+
 internal void
 DrawRectangle(game_offscreen_buffer *Buffer, 
 		   	  real32 RealMinX, real32 RealMinY,
 			  real32 RealMaxX, real32 RealMaxY,
-			  uint32 Color)
+			  real32 R, real32 G, real32 B)
 {
 	int32 MinX = RoundReal32ToInt32(RealMinX);
 	int32 MaxX = RoundReal32ToInt32(RealMaxX);
@@ -70,6 +78,10 @@ DrawRectangle(game_offscreen_buffer *Buffer,
 	{
 		MaxY = Buffer->Height;
 	}
+
+	uint32 Color = ((RoundReal32ToUInt32(R * 255.0f) << 16) |
+					(RoundReal32ToUInt32(G * 255.0f) << 8)  |
+					(RoundReal32ToUInt32(B * 255.0f) << 0));
 
     uint8 *Row = ((uint8 *)Buffer->Memory + MinX * Buffer->BytesPerPixel + MinY * Buffer->Pitch);
 
@@ -111,11 +123,80 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 		}
         else
         {
+			real32 dPlayerX = 0.0f;
+			real32 dPlayerY = 0.0f;
+
+			if (Controller->MoveUp.EndedDown)
+			{
+				dPlayerY = -1.0f;
+			}
+
+			if (Controller->MoveDown.EndedDown)
+			{
+				dPlayerY = 1.0f;
+			}
+
+			if (Controller->MoveLeft.EndedDown)
+			{
+				dPlayerX = -1.0f;
+			}
+
+			if (Controller->MoveRight.EndedDown)
+			{
+				dPlayerX = 1.0f;
+			}
+			GameState->PlayerX += dPlayerX * 100 * Input->DeltaTime;
+			GameState->PlayerY += dPlayerY * 100 * Input->DeltaTime;
 		}
     }
 
-	DrawRectangle(Buffer, 0.0f, 0.0f, (real32)Buffer->Width, (real32)Buffer->Height, 0xFF00FFFF);
-	DrawRectangle(Buffer, 10.0f, 10.0f, 30.0f, 30.0f, 0xFFFF0000);
+	DrawRectangle(Buffer, 0.0f, 0.0f, (real32)Buffer->Width, (real32)Buffer->Height, 1.0f, 0.0f, 1.0f);
+
+	uint32 TileMap[9][17] = {
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		{0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0},
+		{0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1},
+		{0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0},
+		{0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0},
+		{0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1},
+		{0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0},
+		{0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0},
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	};
+
+	real32 UpperLeftX = 0.0f;
+	real32 UpperLeftY = 0.0f;
+	real32 TileWidth  = 60.0f;
+	real32 TileHeight = 60.0f;
+
+	for (int Row = 0; Row < 9; ++Row)
+	{
+
+		for (int Column = 0; Column < 17; ++Column)
+		{
+			real32 MinX = UpperLeftX + ((real32)Column * TileWidth);
+			real32 MinY = UpperLeftY + ((real32)Row * TileHeight);
+			real32 MaxX = MinX + TileWidth;
+			real32 MaxY = MinY + TileHeight;
+
+			real32 TileColor  = (real32)(0.5 * TileMap[Row][Column]);
+			DrawRectangle(Buffer, MinX, MinY, MaxX, MaxY, TileColor, TileColor, TileColor);
+		}
+	}
+
+	real32 PlayerR = 0.8f;
+	real32 PlayerG = 0.2f;
+	real32 PlayerB = 1.0f;
+	real32 PlayerWidth = 0.75f * TileWidth;
+	real32 PlayerHeight = TileHeight;
+	real32 PlayerLeft = GameState->PlayerX - 0.5f * PlayerWidth;
+	real32 PlayerTop = GameState->PlayerY - PlayerHeight;
+	DrawRectangle(Buffer, 
+				  PlayerLeft, PlayerTop, 
+				  PlayerLeft + PlayerWidth, 
+				  PlayerTop  + PlayerHeight, 
+				  PlayerR, PlayerG, PlayerB);
+
 }
 
 extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)

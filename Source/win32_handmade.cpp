@@ -1041,7 +1041,6 @@ WinMain(HINSTANCE Instance,
 				game_input Input[2] = {};
 				game_input *NewInput = &Input[0];
 				game_input *OldInput = &Input[1];
-				NewInput->SecondsToAdvanceOverUpdate = TargetSecondsPerFrame;
 
 				LARGE_INTEGER LastCounter = Win32GetWallClock();
 				LARGE_INTEGER FlipWallClock = Win32GetWallClock();
@@ -1061,6 +1060,8 @@ WinMain(HINSTANCE Instance,
 				// NOTE: Here's where the Game Loop begins
 				while (GlobalRunning) 
 				{
+					NewInput->DeltaTime = TargetSecondsPerFrame;
+
 					FILETIME NewDLLWriteTime = Win32GetLastWriteTime(SourceGameCodeDLLFullPath);
 					if (CompareFileTime(&NewDLLWriteTime, &Game.DLLLastWriteTime) != 0)
 					{
@@ -1155,7 +1156,7 @@ WinMain(HINSTANCE Instance,
 
 								// I don't really get this part
 								// This is for dash movement, we can't test this properly right now 
-								/* real32 Threshold = 0.5f;
+								real32 Threshold = 0.5f;
 								   Win32ProcessXInputDigitalButton(
 								   (NewController->StickAverageX < -Threshold) ? 1 : 0,
 								   &OldController->MoveLeft, 1,
@@ -1171,7 +1172,7 @@ WinMain(HINSTANCE Instance,
 								   Win32ProcessXInputDigitalButton(
 								   (NewController->StickAverageY > Threshold) ? 1 : 0,
 								   &OldController->MoveUp, 1,
-								   &NewController->MoveUp); */
+								   &NewController->MoveUp);
 
 								Win32ProcessXInputDigitalButton(Pad->wButtons,
 																&OldController->ActionDown, XINPUT_GAMEPAD_A,

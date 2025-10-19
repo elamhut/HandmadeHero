@@ -123,7 +123,7 @@ struct game_input
     game_button_state MouseButtons[5];
     int32 MouseX, MouseY, MouseZ;
 
-	real32 SecondsToAdvanceOverUpdate;
+	real32 DeltaTime;
 
     game_controller_input Controllers[5];
 };
@@ -153,7 +153,8 @@ struct game_memory
 
 struct game_state
 {
-
+	real32 PlayerX;
+	real32 PlayerY;
 };
 
 #define GAME_UPDATE_AND_RENDER(name) void name(thread_context *Thread, game_memory *Memory, game_input *Input, game_offscreen_buffer *Buffer)
