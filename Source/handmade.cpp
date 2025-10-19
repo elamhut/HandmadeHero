@@ -8,12 +8,12 @@ internal void
 GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer)
 {
     int16 ToneVolume = 3000;
-    int WavePeriod = SoundBuffer->SamplesPerSecond / GameState->ToneHz;
+    int WavePeriod = SoundBuffer->SamplesPerSecond / 400; // TODO: Hardcoded value here for Tone
 
     int16 *SampleOut = SoundBuffer->Samples;
     for (int SampleIndex = 0; SampleIndex < SoundBuffer->SampleCount; ++SampleIndex)
     {
-#if 1
+#if 0
         real32 SineValue = sinf(GameState->tSine);
         int16 SampleValue = (int16)(SineValue * ToneVolume);
 #else
@@ -22,15 +22,109 @@ GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer)
         *SampleOut++ = SampleValue;
         *SampleOut++ = SampleValue;
 
+#if 0
         GameState->tSine += 2.0f * Pi32 * 1.0f / (real32)WavePeriod;
         if (GameState->tSine > 2.0f * Pi32)
         {
             GameState->tSine -= 2.0f * Pi32;
         }
+#endif
     }
 }
 
+internal int32
+RoundReal32ToInt32(real32 Real32ToRound)
+{
+	int32 Result = (int32)(Real32ToRound + 0.5f);
 
+	return Result;
+}
+
+internal void
+DrawRectangle(game_offscreen_buffer *Buffer, 
+		   	  real32 RealMinX, real32 RealMinY,
+			  real32 RealMaxX, real32 RealMaxY,
+			  uint32 Color)
+{
+	int32 MinX = RoundReal32ToInt32(RealMinX);
+	int32 MaxX = RoundReal32ToInt32(RealMaxX);
+	int32 MinY = RoundReal32ToInt32(RealMinY);
+	int32 MaxY = RoundReal32ToInt32(RealMaxY);
+
+	if (MinX < 0)
+	{
+		MinX = 0;
+	}
+
+	if (MinY < 0)
+	{
+		MinY = 0;
+	}
+
+	if (MaxX > Buffer->Width)
+	{
+		MaxX = Buffer->Width;
+	}
+
+	if (MaxY > Buffer->Height)
+	{
+		MaxY = Buffer->Height;
+	}
+
+    uint8 *Row = ((uint8 *)Buffer->Memory + MinX * Buffer->BytesPerPixel + MinY * Buffer->Pitch);
+
+	for (int Y = MinY; Y < MaxY; ++Y)
+	{
+		uint32 *Pixel = (uint32 *)Row;
+
+		for (int X = MinX; X < MaxX; ++X)
+		{
+			*Pixel++ = Color;
+		}
+
+		Row += Buffer->Pitch;
+	}
+
+}
+
+extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
+{
+    // NOTE: Assertion to make sure game_button_state array is the same size
+    // as the amount of buttons we've added to the struct
+    Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
+            (ArrayCount(Input->Controllers[0].Buttons))) 
+    //NOTE: Assertion to make sure our game state isn't bigger than our available memory
+    Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
+
+    game_state *GameState = (game_state *)Memory->PermanentStorage;
+
+    if (!Memory->IsInitialized)
+    {
+        Memory->IsInitialized = true;
+    }
+
+    for (int ControllerIndex = 0; ControllerIndex < ArrayCount(Input->Controllers); ++ControllerIndex) 
+    {
+        game_controller_input *Controller = GetController(Input, ControllerIndex);
+        if(Controller->IsAnalog)
+        {
+		}
+        else
+        {
+		}
+    }
+
+	DrawRectangle(Buffer, 0.0f, 0.0f, (real32)Buffer->Width, (real32)Buffer->Height, 0xFF00FFFF);
+	DrawRectangle(Buffer, 10.0f, 10.0f, 30.0f, 30.0f, 0xFFFF0000);
+}
+
+extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
+{
+    game_state *GameState = (game_state *)Memory->PermanentStorage;
+    GameOutputSound(GameState, SoundBuffer);
+}
+
+/*
 internal void
 RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffset)
 {
@@ -62,115 +156,4 @@ RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffs
         // contained in the Width of the screen (Pitch is Width * BytesPerPixel)
         Row += Buffer->Pitch;
     }
-}
-
-internal void
-RenderPlayer(game_offscreen_buffer *Buffer, int PlayerX, int PlayerY)
-{
-    uint8 *EndOfBuffer = (uint8 *)Buffer->Memory + Buffer->Pitch * Buffer->Height;
-
-    uint32 Color = 0xFFFFFFFF;
-    int Top = PlayerY;
-    int Bottom = PlayerY + 10;
-
-    for (int X = PlayerX; X < PlayerX + 10; ++X) 
-    {
-        uint8 *Pixel = ((uint8 *)Buffer->Memory + 
-                X * Buffer->BytesPerPixel +
-                Top * Buffer->Pitch);
-
-        for (int Y = Top; Y < Bottom; ++Y)
-        {
-            if ((Pixel >= Buffer->Memory) && ((Pixel + 4) <= EndOfBuffer))
-            {
-                *(uint32 *)Pixel = Color;
-            }
-
-            Pixel += Buffer->Pitch;
-        }
-    }
-}
-
-extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
-{
-    // NOTE: Assertion to make sure game_button_state array is the same size
-    // as the amount of buttons we've added to the struct
-    Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
-            (ArrayCount(Input->Controllers[0].Buttons))) 
-    //NOTE: Assertion to make sure our game state isn't bigger than our available memory
-    Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
-
-    game_state *GameState = (game_state *)Memory->PermanentStorage;
-
-    if (!Memory->IsInitialized)
-    {
-        char *Filename = __FILE__;
-        debug_read_file_result File = Memory->DEBUGPlatformReadEntireFile(Thread, Filename);
-        if (File.Contents)
-        {
-            Memory->DEBUGPlatformWriteEntireFile(Thread, "test.out", File.ContentsSize, File.Contents);
-            Memory->DEBUGPlatformFreeFileMemory(Thread, File.Contents);
-        }
-
-        GameState->ToneHz = 256;
-        GameState->tSine = 0.0f;
-
-        GameState->PlayerX = 400;
-        GameState->PlayerY = 400;
-
-        Memory->IsInitialized = true;
-    }
-
-    for (int ControllerIndex = 0; ControllerIndex < ArrayCount(Input->Controllers); ++ControllerIndex) 
-    {
-        game_controller_input *Controller = GetController(Input, ControllerIndex);
-        if(Controller->IsAnalog)
-        {
-            GameState->BlueOffset += (int)(4.0f * Controller->StickAverageX);
-            GameState->ToneHz = 256 + (int)(128.0f * Controller->StickAverageY);
-        }
-        else
-        {
-            if (Controller->MoveLeft.EndedDown)
-            {
-                GameState->BlueOffset -= 1;
-            }
-            if (Controller->MoveRight.EndedDown) 
-            {
-                GameState->BlueOffset += 1;
-            }
-        }
-
-
-        GameState->PlayerX += (int)(4.0f * Controller->StickAverageX);
-        GameState->PlayerY -= (int)(4.0f * Controller->StickAverageY);
-        if (GameState->tJump > 0)
-        {
-            GameState->PlayerY += (int)(5.0f*sinf(0.5f*Pi32*GameState->tJump));
-        }
-        if (Controller->ActionDown.EndedDown)
-        {
-            GameState->tJump = 4.0f;
-        }
-        GameState->tJump -= 0.033f;
-    }
-
-    RenderWeirdGradient(Buffer, GameState->BlueOffset, GameState->GreenOffset);
-    RenderPlayer(Buffer, GameState->PlayerX, GameState->PlayerY);
-
-    RenderPlayer(Buffer, Input->MouseX, Input->MouseY);
-
-    for (int ButtonIndex = 0; ButtonIndex < ArrayCount(Input->MouseButtons); ++ButtonIndex)
-    {
-        if (Input->MouseButtons[ButtonIndex].EndedDown)
-        {
-            RenderPlayer(Buffer, 20 * ButtonIndex, 10);
-        }
-    }
-}
-
-extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
-{
-    game_state *GameState = (game_state *)Memory->PermanentStorage;
-    GameOutputSound(GameState, SoundBuffer);
-}
+} */

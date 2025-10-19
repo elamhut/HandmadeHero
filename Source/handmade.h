@@ -123,6 +123,8 @@ struct game_input
     game_button_state MouseButtons[5];
     int32 MouseX, MouseY, MouseZ;
 
+	real32 SecondsToAdvanceOverUpdate;
+
     game_controller_input Controllers[5];
 };
 inline game_controller_input *GetController(game_input *Input, int unsigned ControllerIndex)
@@ -151,15 +153,7 @@ struct game_memory
 
 struct game_state
 {
-    int ToneHz;
-    int GreenOffset;
-    int BlueOffset;
 
-    real32 tSine;
-
-    int PlayerX;
-    int PlayerY;
-    real32 tJump;
 };
 
 #define GAME_UPDATE_AND_RENDER(name) void name(thread_context *Thread, game_memory *Memory, game_input *Input, game_offscreen_buffer *Buffer)
