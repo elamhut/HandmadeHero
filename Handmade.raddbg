@@ -1,3 +1,10 @@
 // raddbg 0.9.22 project file
 
 recent_file: path: "Source/win32_handmade.cpp"
+recent_file: path: "Build/win32_handmade.exe"
+target:
+{
+  executable: "Build/win32_handmade.exe"
+  working_directory: Build
+  enabled: 1
+}
