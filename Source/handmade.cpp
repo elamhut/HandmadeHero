@@ -1,5 +1,6 @@
 #include "definitions.h"
 #include "handmade.h"
+#include "handmade_intrinsics.c"
 //TODO Remove this cmath call later!
 #include <math.h>
 #include <windows.h>
@@ -32,39 +33,6 @@ GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer)
         }
 #endif
     }
-}
-
-internal int32
-RoundReal32ToInt32(real32 Real32ToRound)
-{
-	int32 Result = (int32)(Real32ToRound + 0.5f);
-
-	return Result;
-}
-
-internal uint32
-RoundReal32ToUInt32(real32 Real32ToRound)
-{
-	uint32 Result = (uint32)(Real32ToRound + 0.5f);
-
-	return Result;
-}
-
-#include "math.h"
-internal int32
-FloorReal32ToInt32(real32 Real32ToTruncate)
-{
-	int32 Result = (int32)floorf(Real32ToTruncate);
-
-	return Result;
-}
-
-internal int32
-TruncateReal32ToInt32(real32 Real32ToTruncate)
-{
-	int32 Result = (int32)Real32ToTruncate;
-
-	return Result;
 }
 
 internal void
@@ -171,16 +139,16 @@ GetCanonPosition(world *World, raw_position Pos)
 
 	real32 X = Pos.TileMapRelativeX - World->UpperLeftX;
 	real32 Y = Pos.TileMapRelativeY - World->UpperLeftY;
-	Result.TileX = FloorReal32ToInt32(X / World->TileWidth);
-	Result.TileY = FloorReal32ToInt32(Y / World->TileHeight);
+	Result.TileX = FloorReal32ToInt32(X / World->TileSideInPixels);
+	Result.TileY = FloorReal32ToInt32(Y / World->TileSideInPixels);
 
-	Result.TileRelativeX = X - Result.TileX * World->TileWidth;
-	Result.TileRelativeY = Y - Result.TileY * World->TileWidth;
+	Result.TileRelativeX = X - Result.TileX * World->TileSideInPixels;
+	Result.TileRelativeY = Y - Result.TileY * World->TileSideInPixels;
 
 	Assert(Result.TileRelativeX >= 0);
 	Assert(Result.TileRelativeY >= 0);
-	Assert(Result.TileRelativeX < World->TileWidth);
-	Assert(Result.TileRelativeY < World->TileHeight);
+	Assert(Result.TileRelativeX < World->TileSideInPixels);
+	Assert(Result.TileRelativeY < World->TileSideInPixels);
 
 	if (Result.TileX < 0)
 	{
@@ -290,18 +258,18 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 	TileMaps[1][1].Tiles = (uint32 *)Tiles11;
 
 	world World;
+	World.TileSideInMeters = 1.0f;
+	World.TileSideInPixels = 60;
 	World.CountX = TILEMAP_COUNT_X;
 	World.CountY = TILEMAP_COUNT_Y;
-	World.UpperLeftX = -30;
+	World.UpperLeftX = -(real32)World.TileSideInPixels / 2;
 	World.UpperLeftY = 0;
-	World.TileWidth  = 60;
-	World.TileHeight = 60;
 	World.TileMapCountX = 2;
 	World.TileMapCountY = 2;
 	World.TileMaps = (tile_map *)TileMaps;
 
-	real32 PlayerWidth = 0.75f * World.TileWidth;
-	real32 PlayerHeight = World.TileHeight;
+	real32 PlayerWidth = 0.75f * World.TileSideInPixels;
+	real32 PlayerHeight = (real32)World.TileSideInPixels;
 
     game_state *GameState = (game_state *)Memory->PermanentStorage;
     if (!Memory->IsInitialized)
@@ -364,8 +332,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 				canon_position PlayerPos = GetCanonPosition(&World, RawPos);
 				GameState->PlayerTileMapX = PlayerPos.TileMapX;
 				GameState->PlayerTileMapY = PlayerPos.TileMapY;
-				GameState->PlayerX = World.UpperLeftX + World.TileWidth  * PlayerPos.TileX + PlayerPos.TileRelativeX;
-				GameState->PlayerY = World.UpperLeftY + World.TileHeight * PlayerPos.TileY + PlayerPos.TileRelativeY;
+				GameState->PlayerX = World.UpperLeftX + World.TileSideInPixels  * PlayerPos.TileX + PlayerPos.TileRelativeX;
+				GameState->PlayerY = World.UpperLeftY + World.TileSideInPixels * PlayerPos.TileY + PlayerPos.TileRelativeY;
 			}
 		}
     }
@@ -377,10 +345,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
 		for (int Column = 0; Column < 17; ++Column)
 		{
-			real32 MinX = World.UpperLeftX + ((real32)Column * World.TileWidth);
-			real32 MinY = World.UpperLeftY + ((real32)Row * World.TileHeight);
-			real32 MaxX = MinX + World.TileWidth;
-			real32 MaxY = MinY + World.TileHeight;
+			real32 MinX = World.UpperLeftX + ((real32)Column * World.TileSideInPixels);
+			real32 MinY = World.UpperLeftY + ((real32)Row * World.TileSideInPixels);
+			real32 MaxX = MinX + World.TileSideInPixels;
+			real32 MaxY = MinY + World.TileSideInPixels;
 
 			real32 TileColor = GetTileValueUnchecked(&World, TileMap, Column, Row) == 0 ? 1.f : 0.5f;
 			DrawRectangle(Buffer, MinX, MinY, MaxX, MaxY, TileColor, TileColor, TileColor);

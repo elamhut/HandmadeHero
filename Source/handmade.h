@@ -167,6 +167,9 @@ struct tile_map
 
 struct world
 {
+	real32 TileSideInMeters;
+	int32 TileSideInPixels;
+
 	int32 CountX;
 	int32 CountY;
 
